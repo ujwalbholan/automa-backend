@@ -1,0 +1,137 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+//user model
+
+model User {
+  id                String              @id @default(uuid())
+  email             String              @unique
+  password          String
+  refreshToken      String?
+  createdAt         DateTime            @default(now())
+
+  Workflows         Workflow[]
+  Credit            Credit?
+  Transactions      Transaction[]
+  APIKeys           APIKey[]
+  ActivityLogs      ActivityLog[]
+  IntegrationTokens IntegrationToken[]
+}
+
+model APIKey {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  key        String   @unique
+  createdAt  DateTime @default(now())
+  isActive   Boolean  @default(true)
+  workflowId String?
+  workflow   Workflow? @relation(fields: [workflowId], references: [id])
+  triggers   Trigger[]
+}
+
+model Credit {
+  id      String  @id @default(uuid())
+  userId  String  @unique
+  user    User    @relation(fields: [userId], references: [id])
+  balance Int     @default(10)
+}
+
+model Transaction {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String
+  amount    Int
+  createdAt DateTime @default(now())
+}
+
+model Workflow {
+  id              String          @id @default(uuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id])
+  name            String
+  creditsRequired Int             @default(1)
+  version         Int             @default(1)
+  isActive        Boolean         @default(true)
+  isDeleted       Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+
+  Triggers        Trigger[]
+  Actions         Action[]
+  ExecutionLogs   ExecutionLog[]
+  apiKeys         APIKey[]
+}
+
+model Trigger {
+  id           String   @id @default(uuid())
+  workflowId   String
+  workflow     Workflow @relation(fields: [workflowId], references: [id])
+  eventType    String
+  cronSchedule String?
+  webhookURL   String?
+  apiKeyId     String?
+  apiKey       APIKey?  @relation(fields: [apiKeyId], references: [id])
+  isDeleted    Boolean  @default(false)
+}
+
+model Action {
+  id           String   @id @default(uuid())
+  workflowId   String
+  workflow     Workflow @relation(fields: [workflowId], references: [id])
+  actionType   String
+  config       Json
+  isDeleted    Boolean  @default(false)
+}
+
+model ExecutionLog {
+  id           String     @id @default(uuid())
+  workflowId   String
+  workflow     Workflow   @relation(fields: [workflowId], references: [id])
+  status       String     // "success", "failed", "pending"
+  executedAt   DateTime   @default(now())
+  error        String?
+  retryCount   Int        @default(0)
+  LogEntries   LogEntry[]
+}
+
+model LogEntry {
+  id              String        @id @default(uuid())
+  executionLogId  String
+  executionLog    ExecutionLog  @relation(fields: [executionLogId], references: [id])
+  message         String
+  level           String        // "info", "error", etc.
+  timestamp       DateTime      @default(now())
+}
+
+model IntegrationToken {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  serviceName    String   // "gmail", "slack", etc.
+  accessToken    String
+  refreshToken   String?
+  expiresAt      DateTime?
+}
+
+model ActivityLog {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  action     String   // "create_workflow", "delete_action", etc.
+  details    Json?
+  createdAt  DateTime @default(now())
+}
