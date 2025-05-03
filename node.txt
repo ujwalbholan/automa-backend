@@ -1,0 +1,13 @@
+"build":"tsc", this will compile the typescript code to javascript
+
+npm i -D @types/node this is implement typescript types
+
+
+
+how to do token validation like when login 1st the accesstoken should 
+ be checked if the token is  not tampered or the token is  not expired 
+ then return user data 1st case. if the access toke is expired then check 
+ the refresh token. if refresh token is  not expired then generate 
+ the new access token and set to cookie and send the user data. 
+ if refreshtoken is  expried then 1st generate new refreshtoken update to the  db and then 
+ refresh the access token and return the used data.
