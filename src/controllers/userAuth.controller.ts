@@ -1,12 +1,9 @@
-import e, { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { validationResult } from "express-validator";
-import { register, login } from '../services/auth.service';
+import { register, login, logout } from '../services/auth.service'
+import { LoginUserInput } from '../services/auth.service';
+import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
-interface AuthenticatedRequest extends Request {
-    user?: {
-        id: string;
-    };
-}
 
 const registerController = async (req: Request, res: Response): Promise<void> => {
 
@@ -23,14 +20,14 @@ const registerController = async (req: Request, res: Response): Promise<void> =>
 
     await register(user).then((result) => {
 
-        res.cookie("accessToken", result.accessToken, {
+        res.cookie("accessToken", `Bearer ${result.accessToken}`, {
             httpOnly: true,
             secure: process.env.NODE_ENV ? true : false,
             maxAge: 15 * 60 * 1000, // 15 minutes
             sameSite: "strict",
         });
 
-        res.cookie("refreshToken", result.refreshToken, {
+        res.cookie("refreshToken", `Bearer ${result.refreshToken}`, {
             httpOnly: true,
             secure: process.env.NODE_EN ? true : false,
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
@@ -45,8 +42,8 @@ const registerController = async (req: Request, res: Response): Promise<void> =>
                     "email": result.user.email,
                     "fullName": result.user.fullName,
                 },
-                "accessToken": result.accessToken,
-                "refreshToken": result.refreshToken
+                "accessToken": `Bearer ${result.accessToken}`,
+                "refreshToken": `Bearer ${result.refreshToken}`,
             }
         });
     }).catch((err) => {
@@ -71,19 +68,20 @@ const loginController = async (req: Request, res: Response): Promise<void> => {
         });
         return
     }
-
     const user = req.body;
+    const accessToken = req.cookies?.accessToken;
+    const refreshToken = req.cookies?.refreshToken;
 
-    await login(req, user).then((result) => {
+    await login(user).then((result) => {
 
-        res.cookie("accessToken", `Bearer ${result.accessToken}`, {
+        res.cookie("accessToken", result.accessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV ? true : false,
             maxAge: 15 * 60 * 1000, // 15 minutes
             sameSite: "strict",
         });
 
-        res.cookie("refreshToken", `Bearer ${result.refreshToken}`, {
+        res.cookie("refreshToken", result.refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_EN ? true : false,
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
@@ -98,8 +96,8 @@ const loginController = async (req: Request, res: Response): Promise<void> => {
                     "email": result.user.email,
                     "fullName": result.user.fullName,
                 },
-                "accessToken": result.accessToken,
-                "refreshToken": result.refreshToken,
+                "accessToken": accessToken || result.accessToken,
+                "refreshToken": refreshToken || result.refreshToken,
             }
         });
     }).catch((err) => {
@@ -113,8 +111,36 @@ const loginController = async (req: Request, res: Response): Promise<void> => {
     })
 }
 
-const logutController = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+const logutController = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
 
+    const refreshToken = req.cookies?.refreshToken;
+    const accessToken = req.cookies?.accessToken;
+    const token: LoginUserInput = { accessToken, refreshToken };
+
+    console.log("token", token);
+
+    if (!refreshToken) {
+        res.status(400).json({ status: 401, message: "Logged out successfully" });
+        return;
+    }
+
+    await logout(token).then((result) => {
+        res.clearCookie("accessToken", { httpOnly: true, secure: true, sameSite: "strict" });
+        res.clearCookie("refreshToken", { httpOnly: true, secure: true, sameSite: "strict" });
+
+        res.status(200).json({
+            message: result.message,
+        });
+
+    }).catch((err) => {
+        res.status(500).json(
+            {
+                status: 500,
+                message: "logout faild",
+                error: err.message
+            }
+        );
+    });
 }
 
 

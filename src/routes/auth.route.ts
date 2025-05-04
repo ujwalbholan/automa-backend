@@ -24,7 +24,7 @@ authRoutes.route("/login").post(
         body('email').isEmail().withMessage('invalid email'),
         body('password').isLength({ min: 6 }).withMessage('password must be greater then 6 character'),
     ],
-    loginController
+     loginController
 );
 
 //oauth routes

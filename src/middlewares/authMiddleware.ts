@@ -14,12 +14,12 @@ const authMiddleware = async (
     req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
-): Promise<Response | void> => {
+): Promise<void> => {
     const accessToken = req.cookies?.accessToken;
     const refreshToken = req.cookies?.refreshToken;
 
     if (!accessToken || !refreshToken) {
-        return res.status(401).json({ error: "Missing tokens" });
+        res.status(401).json({ error: "Missing tokens" });
     }
 
     try {
@@ -28,7 +28,7 @@ const authMiddleware = async (
         return next();
     } catch (accessErr: any) {
         if (accessErr.name !== "TokenExpiredError") {
-            return res.status(401).json({ error: "Access token is invalid or tampered" });
+            res.status(401).json({ error: "Access token is invalid or tampered" });
         }
 
         // Try refresh token
@@ -36,39 +36,54 @@ const authMiddleware = async (
             const refreshPayload = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET) as JwtPayload;
 
             const user = await prisma.user.findUnique({
-                where: { id: refreshPayload.userId },
+                where: {
+                    id: refreshPayload.userId
+                },
             });
 
             if (!user || user.refreshToken !== refreshToken) {
-                return res.status(403).json({ error: "Invalid refresh token or user mismatch" });
+                res.status(403).json({
+                    error: "Invalid refresh token or user mismatch"
+                });
             }
 
-            const { newAccessToken, newRefreshToken } = await generateTokens(user.email) as any;
+            const { newAccessToken, newRefreshToken } = await generateTokens({
+                email: user.email,
+                fullName: user.fullName,
+            }) as any;
 
             await prisma.user.update({
-                where: { id: user.id },
-                data: { refreshToken: newRefreshToken },
+                where: {
+                    id: user.id
+                },
+                data: {
+                    refreshToken: newRefreshToken
+                },
             });
 
-            res.cookie("accessToken", `Bearer ${newAccessToken}`, {
+            res.cookie("accessToken", newAccessToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV ? true : false,
-                maxAge: 15 * 60 * 1000, 
+                maxAge: 15 * 60 * 1000,
                 sameSite: "strict",
             });
 
-            res.cookie("refreshToken", `Bearer ${newRefreshToken}`, {
+            res.cookie("refreshToken", newRefreshToken, {
                 httpOnly: true,
                 secure: process.env.NODE_EN ? true : false,
-                maxAge: 7 * 24 * 60 * 60 * 1000, 
+                maxAge: 7 * 24 * 60 * 60 * 1000,
                 sameSite: "strict",
             });
 
             req.userId = user.id;
 
             return next();
+            
         } catch (refreshErr: any) {
-            return res.status(403).json({ error: "Refresh token invalid or expired" });
+            res.status(403).json({
+                Status: 403,
+                error: "Refresh token invalid or expired"
+            });
         }
     }
 };
