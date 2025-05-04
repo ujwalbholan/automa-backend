@@ -1,33 +1,40 @@
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 
-// interface UserPayload {
-//     id: string;
-//     email: string;
-//     fullName?: string;
-// }
+export interface UserPayload {
+    email: string;
+    fullName?: string;
+}
 
-const generateRefreshToken = async (email: string): Promise<string> => {
-    const salt = await bcrypt.genSalt(10);
-    const token = await bcrypt.hash(email + Date.now(), salt);
+const generateRefreshToken = async (email: string, fullName: string): Promise<string> => {
+    const token = jwt.sign(
+        {
+            email: email,
+            fullName: fullName,
+        },
+        process.env.ACCESS_TOKEN_SECRET,
+        { expiresIn: '7d' }
+    );
     return token;
 };
 
-const generateAccessToken = async (email: string): Promise<string> => {
+const generateAccessToken = async ( email: string, fullName: string): Promise<string> => {
     const token = jwt.sign(
-        { email: email },
+        {
+            email: email,
+            fullName: fullName
+        },
         process.env.ACCESS_TOKEN_SECRET,
         { expiresIn: '15m' }
     );
     return token;
 };
 
-const generateTokens = async (email: string): Promise<{
+const generateTokens = async (user: UserPayload): Promise<{
     accessToken: string;
     refreshToken: string;
 }> => {
-    const accessToken = await generateAccessToken(email);
-    const refreshToken = await generateRefreshToken(email);
+    const accessToken = await generateAccessToken( user.email, user.fullName);
+    const refreshToken = await generateRefreshToken(user.email, user.fullName);
     return { accessToken, refreshToken };
 };
 

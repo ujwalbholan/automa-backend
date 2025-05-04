@@ -1,7 +1,7 @@
+import { Request, Response } from "express";
 import { generateTokens } from "../utils/jwtTokens.util";
 import { prisma } from "../db/prismaClient.db";
 import { hashPassword } from '../utils/hashPassword.util';
-import { ApiError } from "../utils/apiError.util";
 import { comparePassword } from '../utils/hashPassword.util'
 
 interface RegisterUserInput {
@@ -13,9 +13,9 @@ interface RegisterUserInput {
 interface RegisterResult {
     message: string;
     user: {
+        id: string;
         email: string;
         fullName: string;
-        id: string;
     };
     accessToken: string;
     refreshToken: string;
@@ -28,7 +28,8 @@ const register = async (user: RegisterUserInput): Promise<RegisterResult> => {
         where: {
             email: email as string
         }
-    })
+    });
+
 
     if (existingUser) {
         throw new Error("User already exists with this email");
@@ -36,7 +37,10 @@ const register = async (user: RegisterUserInput): Promise<RegisterResult> => {
 
     const hashedPassword = await hashPassword(password);
 
-    const { accessToken, refreshToken } = await generateTokens(user.email);
+    const { accessToken, refreshToken } = await generateTokens({
+        email: user.email,
+        fullName: user.fullName
+    });
 
     try {
         const newUser = await prisma.user.create({
@@ -59,12 +63,12 @@ const register = async (user: RegisterUserInput): Promise<RegisterResult> => {
             refreshToken: refreshToken,
         };
     } catch (err) {
-        throw new ApiError(500, err.message);
+        throw new Error("Error registering user: " + err.message);
     }
 
 }
 
-const login = async (user: RegisterUserInput): Promise<RegisterResult> => {
+const login = async (req: Request, user: RegisterUserInput): Promise<RegisterResult> => {
     const { email, password } = user;
 
     const existingUser = await prisma.user.findUnique({
@@ -72,7 +76,7 @@ const login = async (user: RegisterUserInput): Promise<RegisterResult> => {
             email: email as string
         }
     });
-
+    
     if (!existingUser || existingUser.email !== email) {
         throw new Error("User not found with this email");
     }
@@ -82,25 +86,59 @@ const login = async (user: RegisterUserInput): Promise<RegisterResult> => {
         throw new Error("Invalid password");
     }
 
-    const { accessToken, refreshToken } = await generateTokens(existingUser.email);
+    try {
+        let accessToken: string;
+        let refreshToken: string;
 
+        const RToken = req.cookies?.refreshToken.split[' '][1];
+        const AToken = req.cookies?.accessToken.split[' '][1];
 
+        RToken.split[' '][1];
+        AToken.split[' '][1];
 
-    return {
-        message: "User logged in successfully",
-        user: {
-            email: existingUser.email,
-            fullName: existingUser.fullName,
-            id: existingUser.id,
-        },
-        accessToken: accessToken,
-        refreshToken: refreshToken,
-    };
+        console.log("RToken", RToken);
+        console.log("AToken", AToken);
+
+        if (RToken && RToken === existingUser.refreshToken) {
+            // Reuse tokens
+            refreshToken = RToken;
+            accessToken = AToken;
+        } else {
+
+            const { accessToken, refreshToken } = await generateTokens({
+                email: user.email,
+                fullName: user.fullName
+            });
+
+            await prisma.user.update({
+                where: {
+                    id: existingUser.id,
+                },
+                data: {
+                    refreshToken: refreshToken,
+                },
+            });
+        }
+
+        return {
+            message: "User logged in successfully",
+            user: {
+                email: existingUser.email,
+                fullName: existingUser.fullName,
+                id: existingUser.id,
+            },
+            accessToken: accessToken,
+            refreshToken: refreshToken,
+        };
+    } catch (err) {
+        throw new Error("Error registering user: " + err.message);
+    }
 }
 
 const logout = async (userId: string): Promise<void> => {
 
 }
+
 export {
     register,
     login,

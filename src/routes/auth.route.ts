@@ -5,7 +5,7 @@ import {
     loginController,
     logutController
 } from "../controllers/userAuth.controller";
-// import { authMiddleware } from "../middlewares/authMiddleware";
+import { authMiddleware } from "../middlewares/authMiddleware";
 
 
 const authRoutes = Router();
@@ -42,6 +42,6 @@ authRoutes.route('/google/callback').get(
 );
 
 //logout route
-authRoutes.route('/logout').post(logutController)
+authRoutes.route('/logout').post(  logutController)
 
 export { authRoutes } 

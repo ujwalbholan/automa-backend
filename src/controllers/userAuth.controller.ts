@@ -1,7 +1,12 @@
-import { Request, Response } from 'express';
+import e, { Request, Response } from 'express';
 import { validationResult } from "express-validator";
 import { register, login } from '../services/auth.service';
-import { ApiError } from '../utils/apiError.util';
+
+interface AuthenticatedRequest extends Request {
+    user?: {
+        id: string;
+    };
+}
 
 const registerController = async (req: Request, res: Response): Promise<void> => {
 
@@ -40,12 +45,17 @@ const registerController = async (req: Request, res: Response): Promise<void> =>
                     "email": result.user.email,
                     "fullName": result.user.fullName,
                 },
-                "accessToken": result.accessToken
+                "accessToken": result.accessToken,
+                "refreshToken": result.refreshToken
             }
         });
     }).catch((err) => {
         res.status(500).json(
-            new ApiError(500, err.message)
+            {
+                status: 500,
+                message: "Register faild",
+                error: err.message
+            }
         );
     })
 
@@ -64,7 +74,7 @@ const loginController = async (req: Request, res: Response): Promise<void> => {
 
     const user = req.body;
 
-    await login(user).then((result) => {
+    await login(req, user).then((result) => {
 
         res.cookie("accessToken", `Bearer ${result.accessToken}`, {
             httpOnly: true,
@@ -88,20 +98,25 @@ const loginController = async (req: Request, res: Response): Promise<void> => {
                     "email": result.user.email,
                     "fullName": result.user.fullName,
                 },
-                "accessToken": result.accessToken
+                "accessToken": result.accessToken,
+                "refreshToken": result.refreshToken,
             }
         });
     }).catch((err) => {
         res.status(500).json(
-            new ApiError(500, err.message)
+            {
+                status: 500,
+                message: "login faild",
+                error: err.message
+            }
         );
     })
+}
+
+const logutController = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
 
 }
 
-const logutController = async (req: Request, res: Response): Promise<void> => {
-    res.send("logout successfully");
-}
 
 export {
     registerController,

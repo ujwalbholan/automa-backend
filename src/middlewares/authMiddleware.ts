@@ -6,7 +6,7 @@ import { generateTokens } from "../utils/jwtTokens.util";
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET as string;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET as string;
 
-interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest extends Request {
     userId?: string;
 }
 
@@ -53,14 +53,14 @@ const authMiddleware = async (
             res.cookie("accessToken", `Bearer ${newAccessToken}`, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV ? true : false,
-                maxAge: 15 * 60 * 1000, // 15 minutes
+                maxAge: 15 * 60 * 1000, 
                 sameSite: "strict",
             });
 
             res.cookie("refreshToken", `Bearer ${newRefreshToken}`, {
                 httpOnly: true,
                 secure: process.env.NODE_EN ? true : false,
-                maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+                maxAge: 7 * 24 * 60 * 60 * 1000, 
                 sameSite: "strict",
             });
 
