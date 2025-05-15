@@ -1,6 +1,12 @@
 import { NextFunction, Request, Response } from 'express';
 import { validationResult } from "express-validator";
-import { register, login, logout } from '../services/auth.service'
+import {
+    register,
+    login,
+    logout,
+    forgotPassword,
+    resetPassword
+} from '../services/auth.service'
 import { LoginUserInput } from '../services/auth.service';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
@@ -143,9 +149,41 @@ const logutController = async (req: AuthenticatedRequest, res: Response, next: N
     });
 }
 
+const resetPasswordController = async (req: Request, res: Response): Promise<void> => {
+
+    res.status(200).json({
+        message: "Reset password functionality not implemented yet",
+    });
+}
+
+const forgotPasswordController = async (req: Request, res: Response): Promise<void> => {
+
+    const error = validationResult(req);
+
+    if (!error.isEmpty()) {
+        res.status(400).json({
+            "err": error.array(),
+        });
+        return
+    }
+    const { email } = req.body
+
+    await forgotPassword(email).then((result) => {
+
+    }).catch((error) => {
+
+    });
+
+    res.status(200).json({
+        message: "Reset password functionality not implemented yet",
+    });
+}
+
 
 export {
     registerController,
     loginController,
-    logutController
+    logutController,
+    resetPasswordController,
+    forgotPasswordController
 }

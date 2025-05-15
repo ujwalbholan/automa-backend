@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import passport from "passport";
+import passport, { use } from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { prisma } from "../db/prismaClient.db";
 
@@ -12,20 +12,21 @@ passport.use(new GoogleStrategy(
         callbackURL: "http://localhost:3000/api/v1/auth/google/callback",
     },
     async (accessToken, refreshToken, profile, done) => {
+        console.log('i am in google  oauth');
         try {
             let user = await prisma.user.findUnique({
                 where: { email: profile.emails?.[0].value || "" },
             });
 
             if (!user) {
-                user = await prisma.user.create({
-                    data: {
-                        id: profile.id,
-                        email: profile.emails?.[0].value || "",
-                        fullName: profile.displayName,
-                        password: "googleAuth",
-                    },
-                });
+                // user = await prisma.user.create({
+                //     data: {
+                //         id : user.id,
+                //         oauthId: profile.id,
+                //         email: profile.emails?.[0].value || "",
+                //         fullName: profile.displayName,
+                //     },
+                // });
             }
 
             return done(null, user);

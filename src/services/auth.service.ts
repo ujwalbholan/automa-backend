@@ -3,6 +3,8 @@ import { generateTokens } from "../utils/jwtTokens.util";
 import { prisma } from "../db/prismaClient.db";
 import { hashPassword } from '../utils/hashPassword.util';
 import { comparePassword } from '../utils/hashPassword.util'
+import { isRefreshTokenExpired } from "../utils/validateToken.util";
+import { transporter } from '../utils/sendMail.util'
 
 interface RegisterUserInput {
     email: string;
@@ -96,19 +98,28 @@ const login = async (user: RegisterUserInput): Promise<RegisterResult> => {
             throw new Error("Invalid password");
         }
 
-        const { accessToken, refreshToken } = await generateTokens({
-            email: user.email,
-            fullName: user.fullName
-        });
+        let refreshToken: string;
+        let accessToken: string;
 
-        await prisma.user.update({
-            where: {
-                id: existingUser.id,
-            },
-            data: {
-                refreshToken: refreshToken,
-            },
-        });
+        if (!existingUser.refreshToken || isRefreshTokenExpired(existingUser.refreshToken)) {
+
+            const { accessToken: newAccessToken, refreshToken: newRefreshToken } = await generateTokens({
+                email: user.email,
+                fullName: user.fullName
+            });
+
+            refreshToken = newRefreshToken;
+            accessToken = newAccessToken;
+
+            await prisma.user.update({
+                where: {
+                    id: existingUser.id,
+                },
+                data: {
+                    refreshToken: refreshToken,
+                },
+            });
+        }
 
         return {
             message: "User logged in successfully",
@@ -152,8 +163,35 @@ const logout = async (token: LoginUserInput): Promise<LogoutUserInput> => {
     }
 }
 
+const resetPassword = async (req: Request, res: Response): Promise<void> => {
+    // logic writing left out for reset password
+    res.status(200).json({ message: "Reset password functionality not implemented yet" });
+}
+
+const forgotPassword = async (email: string): Promise<void> => {
+    try {
+        const emailExist = await prisma.user.findUnique({
+            where: {
+                email: email as string
+            }
+        })
+
+        if (!emailExist || emailExist.email !== email) {
+            throw new Error("User not found with this email");
+        }
+
+        //nodemailer implementation left
+        
+
+    } catch (error) {
+
+    }
+}
+
 export {
     register,
     login,
     logout,
+    resetPassword,
+    forgotPassword,
 };

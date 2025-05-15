@@ -3,13 +3,16 @@ import { body } from 'express-validator';
 import {
     registerController,
     loginController,
-    logutController
+    logutController,
+    forgotPasswordController,
+    resetPasswordController
 } from "../controllers/userAuth.controller";
 import { authMiddleware } from "../middlewares/authMiddleware";
 
 
 const authRoutes = Router();
 
+//auth routes
 authRoutes.route("/register").post(
     [
         body('email').isEmail().withMessage('invalid email'),
@@ -24,8 +27,16 @@ authRoutes.route("/login").post(
         body('email').isEmail().withMessage('invalid email'),
         body('password').isLength({ min: 6 }).withMessage('password must be greater then 6 character'),
     ],
-     loginController
+    loginController
 );
+authRoutes.route('/logout').post(logutController)
+authRoutes.route('/resetPassword').post(resetPasswordController)
+authRoutes.route('/forgotPassword').post(forgotPasswordController, [
+    body('email').isEmail().withMessage('invalid email'),
+])
+authRoutes.route('/optCheck').post(forgotPasswordController, [
+    body('email').isEmail().withMessage('invalid email'),
+])
 
 //oauth routes
 import passport from 'passport';
@@ -41,7 +52,6 @@ authRoutes.route('/google/callback').get(
     }
 );
 
-//logout route
-authRoutes.route('/logout').post(  logutController)
+
 
 export { authRoutes } 

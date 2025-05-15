@@ -30,8 +30,12 @@ app.get('/healthcheck', (_req, res) => {
 
 //api routes
 import { authRoutes } from './routes/auth.route';
+import { workflow } from './routes/workflow.route';
 
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/auth', workflow);
+
+
 
 
 
